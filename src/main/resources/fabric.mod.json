@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "mcdiff",
+	"version": "${version}",
+	"name": "mc-diff",
+	"description": "See what you changed in your world: removed blocks in red, placed blocks in green, replaced blocks in yellow.",
+	"authors": [
+		"Arav Panwar"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.aravpanwar.mcdiff.McDiffClient"
+		]
+	},
+	"mixins": [
+		"mcdiff.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"fantasy": ">=0.8.3"
+	}
+}

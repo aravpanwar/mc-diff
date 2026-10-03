@@ -1,0 +1,14 @@
+{
+	"schemaVersion": 1,
+	"id": "mcdiff-test",
+	"version": "1.0.0",
+	"name": "mc-diff tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.aravpanwar.mcdiff.test.McDiffClientGameTest",
+			"com.aravpanwar.mcdiff.OriginalTerrainGameTest",
+			"com.aravpanwar.mcdiff.OriginalNoiseGameTest"
+		]
+	}
+}

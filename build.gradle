@@ -1,0 +1,67 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = 'mc-diff'
+}
+
+version = "${project.mod_version}+${project.minecraft_version}"
+
+repositories {
+	maven {
+		name = 'Nucleoid'
+		url = 'https://maven.nucleoid.xyz/'
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "xyz.nucleoid:fantasy:${project.fantasy_version}"
+	include "xyz.nucleoid:fantasy:${project.fantasy_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "mcdiff-test"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+tasks.register('installToPrism', Copy) {
+	def mods = file("${System.getenv('APPDATA')}/PrismLauncher/instances/mc-diff/.minecraft/mods")
+	from jar.archiveFile
+	into mods
+	doFirst {
+		mods.listFiles()?.findAll { it.name.startsWith('mc-diff-') && it.name.endsWith('.jar') }?.each { it.delete() }
+	}
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_mc-diff" }
+	}
+}

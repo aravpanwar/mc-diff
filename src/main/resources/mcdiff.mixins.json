@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.aravpanwar.mcdiff.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"LevelChunkMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
