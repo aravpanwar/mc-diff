@@ -2,7 +2,7 @@
 
 A client-side Fabric mod for Minecraft 26.2 that shows what you've changed in your world.
 
-![A snowy base with the overlay on: buildings and farm in green, dug-out ground in red](docs/day-on.jpg)
+![A snowy base wiping from normal view to the mc-diff overlay to x-ray, by day and by night](docs/demo.gif)
 
 - **Red**: a block that was there originally and is now gone (dug out, cut down, blown up)
 - **Green**: a block where there was nothing originally (things you built)
