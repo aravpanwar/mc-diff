@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>mc-diff, see what you changed in your world</title>
+	<meta name="description" content="A client-side Fabric mod that shows what you changed in your Minecraft world: removed blocks in red, placed blocks in green, replaced blocks in yellow.">
+	<meta property="og:title" content="mc-diff">
+	<meta property="og:description" content="See what you changed in your Minecraft world: removed in red, placed in green, replaced in yellow.">
+	<meta property="og:image" content="https://aravpanwar.github.io/mc-diff/day-on.jpg">
+	<meta name="color-scheme" content="light dark">
+	<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='8' height='24' fill='%23ff3b30'/%3E%3Crect x='8' width='8' height='24' fill='%2334c759'/%3E%3Crect x='16' width='8' height='24' fill='%23ffcc00'/%3E%3C/svg%3E">
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<main>
+		<header>
+			<h1>mc-diff</h1>
+			<p class="tagline">See what you changed in your Minecraft world.</p>
+			<img class="hero" src="demo.gif" width="800" height="359" alt="A snowy base wiping from normal view to the mc-diff overlay to x-ray, by day and by night">
+		</header>
+
+		<section id="download" aria-labelledby="download-title">
+			<h2 id="download-title">Download</h2>
+			<div class="card">
+				<label for="version">Minecraft version</label>
+				<select id="version" disabled>
+					<option>loading...</option>
+				</select>
+				<a id="get" class="button" href="https://github.com/aravpanwar/mc-diff/releases" aria-disabled="true">See all releases</a>
+				<p id="meta" class="meta" role="status"></p>
+				<p id="notice" class="notice" hidden></p>
+			</div>
+			<noscript><p class="meta">Turn on JavaScript to pick a version here, or use the <a href="https://github.com/aravpanwar/mc-diff/releases">releases page</a>.</p></noscript>
+			<p class="requires">Needs <a href="https://fabricmc.net/use/">Fabric Loader</a> and <a href="https://modrinth.com/mod/fabric-api">Fabric API</a> for the version you pick. Put Fabric API and the mc-diff jar in your <code>mods</code> folder. It only needs to be on your client, including when you play on servers.</p>
+		</section>
+
+		<section aria-labelledby="shows-title">
+			<h2 id="shows-title">What it shows</h2>
+			<ul class="legend">
+				<li><span class="swatch red"></span><strong>Red</strong> a block that was there originally and is now gone (dug out, cut down, blown up)</li>
+				<li><span class="swatch green"></span><strong>Green</strong> a block where there was nothing originally (things you built)</li>
+				<li><span class="swatch yellow"></span><strong>Yellow</strong> a block that was replaced by a different one</li>
+			</ul>
+			<p>Things that change on their own are left out: liquids, fire, ice, snow layers, leaves, grass tufts, flowers, mushrooms, vines and other creeping plants. Block states are ignored too, so opening a door or a crop growing doesn't count.</p>
+		</section>
+
+		<section aria-labelledby="shots-title">
+			<h2 id="shots-title">Screenshots</h2>
+			<div class="shots">
+				<figure><img loading="lazy" src="day-off.jpg" width="1280" height="720" alt="Normal view, daytime"><figcaption>Day, normal</figcaption></figure>
+				<figure><img loading="lazy" src="day-on.jpg" width="1280" height="720" alt="mc-diff on, daytime"><figcaption>Day, mc-diff on</figcaption></figure>
+				<figure><img loading="lazy" src="day-xray.jpg" width="1280" height="720" alt="X-ray on, daytime"><figcaption>Day, x-ray</figcaption></figure>
+				<figure><img loading="lazy" src="night-off.jpg" width="1280" height="720" alt="Normal view, night"><figcaption>Night, normal</figcaption></figure>
+				<figure><img loading="lazy" src="night-on.jpg" width="1280" height="720" alt="mc-diff on, night"><figcaption>Night, mc-diff on</figcaption></figure>
+				<figure><img loading="lazy" src="night-xray.jpg" width="1280" height="720" alt="X-ray on, night"><figcaption>Night, x-ray</figcaption></figure>
+			</div>
+			<p>X-ray shows changes through terrain, which is where all the old mining tunnels and cave bridges turn up.</p>
+		</section>
+
+		<section aria-labelledby="how-title">
+			<h2 id="how-title">How it works</h2>
+			<p>The first time your client sees a chunk, the mod saves a compact snapshot of its blocks. Brand-new chunks are seen right after generation, so in a new world the baseline is untouched terrain. After that, every chunk is compared against its snapshot.</p>
+			<p>For a world that existed before you installed the mod, <code>/mcdiff original</code> regenerates every saved chunk from the world's seed in a temporary hidden dimension and uses that as the baseline. Your real chunks are never modified. It only works if the world was generated on the Minecraft version you're playing now.</p>
+
+			<h3>Commands</h3>
+			<table>
+				<tbody>
+					<tr><td><code>/mcdiff</code></td><td>Show or hide the diff</td></tr>
+					<tr><td><code>/mcdiff xray</code></td><td>See changes through terrain</td></tr>
+					<tr><td><code>/mcdiff range &lt;chunks&gt;</code></td><td>How far away changes are drawn (default 8 chunks)</td></tr>
+					<tr><td><code>/mcdiff stats</code></td><td>Totals for the dimension and the most removed and placed blocks</td></tr>
+					<tr><td><code>/mcdiff original</code></td><td>Rebuild the baseline from the world's seed (singleplayer only)</td></tr>
+					<tr><td><code>/mcdiff original stop</code></td><td>Pause a rebuild; running the command again continues it</td></tr>
+				</tbody>
+			</table>
+		</section>
+	</main>
+
+	<footer>
+		<a href="https://github.com/aravpanwar/mc-diff">Source on GitHub</a>
+		<a href="https://github.com/aravpanwar/mc-diff/releases">All releases</a>
+		<a href="https://github.com/aravpanwar/mc-diff/issues">Report an issue</a>
+		<span>MIT licensed</span>
+	</footer>
+
+	<script src="site.js"></script>
+</body>
+</html>
