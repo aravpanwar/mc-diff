@@ -2,6 +2,8 @@
 
 A client-side Fabric mod for Minecraft 26.2 that shows what you've changed in your world.
 
+**Download:** pick your Minecraft version on the [download page](https://www.aravpanwar.com/mc-diff/) or grab a jar from [releases](https://github.com/aravpanwar/mc-diff/releases).
+
 ![A snowy base wiping from normal view to the mc-diff overlay to x-ray, by day and by night](docs/demo.gif)
 
 - **Red**: a block that was there originally and is now gone (dug out, cut down, blown up)
