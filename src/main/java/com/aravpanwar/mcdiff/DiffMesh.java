@@ -155,15 +155,15 @@ final class DiffMesh {
 		}
 	}
 
-	void emitLines(PoseStack.Pose pose, VertexConsumer buffer, float width) {
+	void emitLines(PoseStack.Pose pose, VertexConsumer buffer) {
 		for (int l = 0; l < lineColors.length; l++) {
 			int color = lineColors[l];
 			int p = l * 6;
 			float dx = lines[p + 3] - lines[p];
 			float dy = lines[p + 4] - lines[p + 1];
 			float dz = lines[p + 5] - lines[p + 2];
-			buffer.addVertex(pose, lines[p], lines[p + 1], lines[p + 2]).setColor(color).setNormal(pose, dx, dy, dz).setLineWidth(width);
-			buffer.addVertex(pose, lines[p + 3], lines[p + 4], lines[p + 5]).setColor(color).setNormal(pose, dx, dy, dz).setLineWidth(width);
+			buffer.addVertex(pose, lines[p], lines[p + 1], lines[p + 2]).setColor(color).setNormal(pose, dx, dy, dz);
+			buffer.addVertex(pose, lines[p + 3], lines[p + 4], lines[p + 5]).setColor(color).setNormal(pose, dx, dy, dz);
 		}
 	}
 

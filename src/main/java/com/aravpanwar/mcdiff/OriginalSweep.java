@@ -1,6 +1,7 @@
 package com.aravpanwar.mcdiff;
 
 import com.aravpanwar.mcdiff.BaselineStore.ChunkSummary;
+import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.io.DataInputStream;
@@ -23,13 +24,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ChunkMap;
@@ -40,15 +40,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.PalettedContainerRO;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
-import net.minecraft.world.level.chunk.storage.SerializableChunkData;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelResource;
 import xyz.nucleoid.fantasy.Fantasy;
-import xyz.nucleoid.fantasy.RuntimeLevelConfig;
-import xyz.nucleoid.fantasy.RuntimeLevelHandle;
+import xyz.nucleoid.fantasy.RuntimeWorldConfig;
+import xyz.nucleoid.fantasy.RuntimeWorldHandle;
 
 /**
  * Rebuilds the baseline of every saved chunk in one dimension from the
@@ -74,15 +77,16 @@ final class OriginalSweep {
 	/*
 	 * Requesting a chunk from off the server thread only holds it with a
 	 * one-tick ticket, which expires long before generation finishes. This
-	 * ticket loads without ticking, never times out, and is removed by hand.
+	 * ticket never times out and is removed by hand. Its level sits far enough
+	 * out that the chunk stops at the light status instead of becoming a full
+	 * chunk that gets ticked.
 	 */
-	private static TicketType ticketType;
+	private static final TicketType<ChunkPos> TICKET_TYPE = TicketType.create(McDiffClient.MOD_ID + "_original", Comparator.comparingLong(ChunkPos::toLong));
 	private static final int TICKET_RADIUS = ChunkLevel.byStatus(FullChunkStatus.FULL) - ChunkLevel.byStatus(ChunkStatus.LIGHT);
 
-	static void registerTicketType() {
-		ticketType = Registry.register(BuiltInRegistries.TICKET_TYPE, Identifier.fromNamespaceAndPath(McDiffClient.MOD_ID, "original"),
-				new TicketType(TicketType.NO_TIMEOUT, TicketType.FLAG_LOADING));
-	}
+	/* The same codec the game reads a saved section's blocks with. */
+	private static final Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC = PalettedContainer.codecRW(
+			Block.BLOCK_STATE_REGISTRY, BlockState.CODEC, PalettedContainer.Strategy.SECTION_STATES, Blocks.AIR.defaultBlockState());
 
 	private enum Sweep {
 		FIRST("rebuilding original terrain, step 1 of 2"),
@@ -158,24 +162,24 @@ final class OriginalSweep {
 		try {
 			ServerLevel real = server.submit(() -> server.getLevel(dimension)).get();
 			if (real == null) {
-				fail("couldn't find the server level for " + dimension.identifier());
+				fail("couldn't find the server level for " + dimension.location());
 				return;
 			}
 			Path regionDir = DimensionType.getStorageFolder(dimension, server.getWorldPath(LevelResource.ROOT)).resolve("region");
 			List<ChunkPos> saved = sweepRegionFiles(regionDir);
 
 			List<ChunkPos> first = new ArrayList<>(saved);
-			first.removeIf(pos -> firstMarker.contains(pos.pack()));
+			first.removeIf(pos -> firstMarker.contains(pos.toLong()));
 			runSweep(Sweep.FIRST, real, first, compute, firstApplied);
 
 			if (!cancelled) {
 				// Opposite order to the first sweep, so overlapping features get placed the other way round.
 				List<ChunkPos> second = new ArrayList<>(saved);
-				second.removeIf(pos -> !(firstMarker.contains(pos.pack()) || firstApplied.contains(pos.pack())) || secondMarker.contains(pos.pack()));
+				second.removeIf(pos -> !(firstMarker.contains(pos.toLong()) || firstApplied.contains(pos.toLong())) || secondMarker.contains(pos.toLong()));
 				Collections.reverse(second);
 				runSweep(Sweep.SECOND, real, second, compute, firstApplied);
 			}
-			ready = (int) saved.stream().filter(pos -> firstMarker.contains(pos.pack()) || firstApplied.contains(pos.pack())).count();
+			ready = (int) saved.stream().filter(pos -> firstMarker.contains(pos.toLong()) || firstApplied.contains(pos.toLong())).count();
 		} catch (Exception e) {
 			fail("couldn't rebuild original terrain: " + e.getMessage());
 			McDiffClient.LOG.error("couldn't rebuild original terrain", e);
@@ -193,19 +197,17 @@ final class OriginalSweep {
 			return;
 		}
 
-		RuntimeLevelHandle handle = server.submit(() -> openPristineLevel(real)).get();
-		ServerLevel pristine = handle.asLevel();
+		RuntimeWorldHandle handle = server.submit(() -> openPristineLevel(real)).get();
+		ServerLevel pristine = handle.asWorld();
 		Semaphore permits = new Semaphore(IN_FLIGHT);
 		ChunkMap chunkMap = real.getChunkSource().chunkMap;
-		CompoundTag fixContext = ChunkMap.getChunkDataFixContextTag(dimension, real.getChunkSource().getGenerator().getTypeNameForDataFixer());
-		int dataVersion = SharedConstants.getCurrentVersion().dataVersion().version();
 		try {
 			for (ChunkPos pos : positions) {
 				if (!acquire(permits, 1)) {
 					break;
 				}
 				chunkMap.read(pos)
-						.thenApplyAsync(tag -> readActual(real, chunkMap, tag, fixContext, dataVersion), compute)
+						.thenApplyAsync(tag -> readActual(real, chunkMap, tag), compute)
 						.thenCompose(actual -> actual == null
 								? CompletableFuture.completedFuture((Boolean) null)
 								: generate(pristine, pos).thenApplyAsync(chunk -> finish(current, pos, actual, chunk, firstApplied), compute))
@@ -227,13 +229,13 @@ final class OriginalSweep {
 	}
 
 	/* Fantasy has to create levels on the server thread. */
-	private RuntimeLevelHandle openPristineLevel(ServerLevel real) {
-		RuntimeLevelConfig config = new RuntimeLevelConfig()
+	private RuntimeWorldHandle openPristineLevel(ServerLevel real) {
+		RuntimeWorldConfig config = new RuntimeWorldConfig()
 				.setSeed(real.getSeed())
 				.setDimensionType(real.dimensionTypeRegistration())
 				.setGenerator(real.getChunkSource().getGenerator())
 				.setShouldTickTime(false);
-		RuntimeLevelHandle handle = Fantasy.get(server).openTemporaryLevel(config);
+		RuntimeWorldHandle handle = Fantasy.get(server).openTemporaryWorld(config);
 		handle.setTickWhenEmpty(true);
 		return handle;
 	}
@@ -257,23 +259,33 @@ final class OriginalSweep {
 	 * Chunks that never finished generating sit at the edge of explored land
 	 * and the player has never seen them, so they are left out.
 	 */
-	private static ChunkSnapshot readActual(ServerLevel real, ChunkMap chunkMap, Optional<CompoundTag> tag, CompoundTag fixContext, int dataVersion) {
+	private static ChunkSnapshot readActual(ServerLevel real, ChunkMap chunkMap, Optional<CompoundTag> tag) {
 		if (tag.isEmpty()) {
 			return null;
 		}
-		CompoundTag upgraded = chunkMap.upgradeChunkTag(tag.get(), -1, fixContext, dataVersion);
-		SerializableChunkData data = SerializableChunkData.parse(real, real.palettedContainerFactory(), upgraded);
-		if (data == null || data.chunkStatus() != ChunkStatus.FULL) {
+		CompoundTag upgraded = chunkMap.upgradeChunkTag(real.dimension(), () -> real.getServer().overworld().getDataStorage(), tag.get(),
+				real.getChunkSource().getGenerator().getTypeNameForDataFixer());
+		if (ChunkStatus.byName(upgraded.getString("Status")) != ChunkStatus.FULL) {
 			return null;
 		}
-		LevelChunkSection[] sections = new LevelChunkSection[real.getSectionsCount()];
-		for (SerializableChunkData.SectionData section : data.sectionData()) {
-			int index = section.y() - real.getMinSectionY();
-			if (index >= 0 && index < sections.length) {
-				sections[index] = section.chunkSection();
+
+		/*
+		 * The game's own chunk reader also updates the real world's point of
+		 * interest data as it goes, which a read-only comparison has no
+		 * business doing, so the block states are read from the saved sections
+		 * directly.
+		 */
+		List<PalettedContainerRO<BlockState>> states = new ArrayList<>(Collections.nCopies(real.getSectionsCount(), null));
+		ListTag sections = upgraded.getList("sections", Tag.TAG_COMPOUND);
+		for (int i = 0; i < sections.size(); i++) {
+			CompoundTag section = sections.getCompound(i);
+			int index = section.getByte("Y") - real.getMinSection();
+			if (index >= 0 && index < states.size() && section.contains("block_states", Tag.TAG_COMPOUND)) {
+				states.set(index, BLOCK_STATE_CODEC.parse(NbtOps.INSTANCE, section.getCompound("block_states"))
+						.getOrThrow(message -> new IllegalStateException("expected readable block states, got " + message)));
 			}
 		}
-		return ChunkSnapshot.capture(real.getMinSectionY(), sections);
+		return ChunkSnapshot.capture(real.getMinSection(), states);
 	}
 
 	/*
@@ -284,9 +296,9 @@ final class OriginalSweep {
 	 */
 	private CompletableFuture<ChunkAccess> generate(ServerLevel pristine, ChunkPos pos) {
 		ServerChunkCache cache = pristine.getChunkSource();
-		server.execute(() -> cache.addTicketWithRadius(ticketType, pos, TICKET_RADIUS));
-		return cache.getChunkFuture(pos.x(), pos.z(), ChunkStatus.LIGHT, true)
-				.whenComplete((result, error) -> server.execute(() -> cache.removeTicketWithRadius(ticketType, pos, TICKET_RADIUS)))
+		server.execute(() -> cache.addRegionTicket(TICKET_TYPE, pos, TICKET_RADIUS, pos));
+		return cache.getChunkFuture(pos.x, pos.z, ChunkStatus.LIGHT, true)
+				.whenComplete((result, error) -> server.execute(() -> cache.removeRegionTicket(TICKET_TYPE, pos, TICKET_RADIUS, pos)))
 				.thenApply(result -> {
 					ChunkAccess chunk = result.orElse(null);
 					if (chunk == null) {
@@ -301,7 +313,7 @@ final class OriginalSweep {
 		if (current == Sweep.FIRST) {
 			byte[] encoded = snapshot.encode();
 			ChunkSummary summary = ChunkSummary.between(snapshot, actual);
-			firstApplied.add(pos.pack());
+			firstApplied.add(pos.toLong());
 			onClient(() -> session.applyOriginal(pos, encoded, snapshot, summary));
 		} else {
 			onClient(() -> session.confirmOriginal(pos, snapshot, actual));
@@ -351,7 +363,7 @@ final class OriginalSweep {
 			}
 		}
 		// Row order lets neighbouring chunks share the generation work they both need.
-		positions.sort(Comparator.<ChunkPos>comparingInt(ChunkPos::z).thenComparingInt(ChunkPos::x));
+		positions.sort(Comparator.<ChunkPos>comparingInt(chunk -> chunk.z).thenComparingInt(chunk -> chunk.x));
 		return positions;
 	}
 

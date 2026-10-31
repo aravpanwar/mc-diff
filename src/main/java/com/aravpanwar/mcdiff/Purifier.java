@@ -5,15 +5,12 @@ import net.minecraft.world.level.block.BaseFireBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BubbleColumnBlock;
-import net.minecraft.world.level.block.BushBlock;
+import net.minecraft.world.level.block.DeadBushBlock;
 import net.minecraft.world.level.block.DoublePlantBlock;
-import net.minecraft.world.level.block.DryVegetationBlock;
-import net.minecraft.world.level.block.FireflyBushBlock;
-import net.minecraft.world.level.block.FlowerBedBlock;
 import net.minecraft.world.level.block.FlowerBlock;
-import net.minecraft.world.level.block.LeafLitterBlock;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.MushroomBlock;
+import net.minecraft.world.level.block.PinkPetalsBlock;
 import net.minecraft.world.level.block.PitcherCropBlock;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.TallGrassBlock;
@@ -39,13 +36,13 @@ final class Purifier {
 			Blocks.KELP, Blocks.KELP_PLANT, Blocks.SEAGRASS, Blocks.TALL_SEAGRASS, Blocks.BUBBLE_COLUMN);
 
 	private static final Set<Block> COMES_AND_GOES = Set.of(
-			Blocks.VINE, Blocks.GLOW_LICHEN, Blocks.SCULK_VEIN, Blocks.POINTED_DRIPSTONE, Blocks.SULFUR_SPIKE,
+			Blocks.VINE, Blocks.GLOW_LICHEN, Blocks.SCULK_VEIN, Blocks.POINTED_DRIPSTONE,
 			Blocks.ICE, Blocks.FROSTED_ICE, Blocks.MOVING_PISTON);
 
 	private static final Set<Block> NATURAL_TERRAIN = Set.of(
 			Blocks.STONE, Blocks.GRANITE, Blocks.DIORITE, Blocks.ANDESITE, Blocks.TUFF, Blocks.DEEPSLATE,
 			Blocks.CALCITE, Blocks.SMOOTH_BASALT, Blocks.DRIPSTONE_BLOCK, Blocks.MAGMA_BLOCK,
-			Blocks.SCULK, Blocks.SULFUR, Blocks.CINNABAR,
+			Blocks.SCULK,
 			Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.COPPER_ORE, Blocks.GOLD_ORE, Blocks.REDSTONE_ORE,
 			Blocks.LAPIS_ORE, Blocks.DIAMOND_ORE, Blocks.EMERALD_ORE,
 			Blocks.DEEPSLATE_COAL_ORE, Blocks.DEEPSLATE_IRON_ORE, Blocks.DEEPSLATE_COPPER_ORE, Blocks.DEEPSLATE_GOLD_ORE,
@@ -121,11 +118,8 @@ final class Purifier {
 		return block instanceof TallGrassBlock
 				|| block instanceof FlowerBlock
 				|| block instanceof MushroomBlock
-				|| block instanceof FlowerBedBlock
-				|| block instanceof LeafLitterBlock
-				|| block instanceof DryVegetationBlock
-				|| block instanceof BushBlock
-				|| block instanceof FireflyBushBlock
+				|| block instanceof PinkPetalsBlock
+				|| block instanceof DeadBushBlock
 				|| (block instanceof DoublePlantBlock && !(block instanceof PitcherCropBlock));
 	}
 }

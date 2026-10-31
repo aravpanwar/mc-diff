@@ -35,7 +35,7 @@ final class ChunkDiff {
 	}
 
 	int minSectionY() {
-		return chunk.getMinSectionY();
+		return chunk.getMinSection();
 	}
 
 	void markAllDirty() {

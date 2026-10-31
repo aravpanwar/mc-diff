@@ -75,34 +75,34 @@ final class BaselineStore {
 	}
 
 	void markOriginal(ChunkPos pos) {
-		if (originalMarker.add(pos.pack())) {
+		if (originalMarker.add(pos.toLong())) {
 			markerDirty = true;
 		}
 	}
 
 	void markConfirmed(ChunkPos pos) {
-		if (confirmedMarker.add(pos.pack())) {
+		if (confirmedMarker.add(pos.toLong())) {
 			markerDirty = true;
 		}
 	}
 
 	byte[] get(ChunkPos pos) {
-		return region(pos).entries.get(pos.pack());
+		return region(pos).entries.get(pos.toLong());
 	}
 
 	void put(ChunkPos pos, byte[] snapshot) {
 		Region region = region(pos);
-		region.entries.put(pos.pack(), snapshot);
+		region.entries.put(pos.toLong(), snapshot);
 		region.dirty = true;
 	}
 
 	void putSummary(ChunkPos pos, ChunkSummary summary) {
 		if (summary.isEmpty()) {
-			if (summaries.remove(pos.pack()) != null) {
+			if (summaries.remove(pos.toLong()) != null) {
 				summariesDirty = true;
 			}
 		} else {
-			summaries.put(pos.pack(), summary);
+			summaries.put(pos.toLong(), summary);
 			summariesDirty = true;
 		}
 	}
@@ -185,11 +185,11 @@ final class BaselineStore {
 	}
 
 	static long regionKey(int chunkX, int chunkZ) {
-		return ChunkPos.pack(chunkX >> 5, chunkZ >> 5);
+		return ChunkPos.asLong(chunkX >> 5, chunkZ >> 5);
 	}
 
 	private Region region(ChunkPos pos) {
-		long key = regionKey(pos.x(), pos.z());
+		long key = regionKey(pos.x, pos.z);
 		Region region = regions.get(key);
 		if (region == null) {
 			region = readRegion(regionFile(key));

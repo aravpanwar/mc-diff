@@ -11,11 +11,13 @@ import java.util.List;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.PalettedContainerRO;
 
 /**
  * The blocks of a chunk as they were the first time the client saw it.
@@ -33,7 +35,7 @@ final class ChunkSnapshot {
 	}
 
 	static ChunkSnapshot capture(ChunkAccess chunk) {
-		return capture(chunk.getMinSectionY(), chunk.getSections());
+		return capture(chunk.getMinSection(), chunk.getSections());
 	}
 
 	/** Sections may contain nulls, which are treated as all air. */
@@ -41,6 +43,20 @@ final class ChunkSnapshot {
 		Section[] sections = new Section[live.length];
 		for (int i = 0; i < live.length; i++) {
 			sections[i] = live[i] == null ? Section.EMPTY : Section.capture(live[i]);
+		}
+		return new ChunkSnapshot(minSectionY, sections);
+	}
+
+	/**
+	 * Reads blocks straight from the paletted containers of a saved chunk, so a
+	 * chunk can be captured without building a live chunk around it. Entries may
+	 * be null, which is treated as all air.
+	 */
+	static ChunkSnapshot capture(int minSectionY, List<PalettedContainerRO<BlockState>> states) {
+		Section[] sections = new Section[states.size()];
+		for (int i = 0; i < sections.length; i++) {
+			PalettedContainerRO<BlockState> container = states.get(i);
+			sections[i] = container == null ? Section.EMPTY : Section.capture(container::get);
 		}
 		return new ChunkSnapshot(minSectionY, sections);
 	}
@@ -127,17 +143,21 @@ final class ChunkSnapshot {
 			return palette[(int) ((word >>> shift) & ((1L << bits) - 1))];
 		}
 
-		static Section capture(LevelChunkSection live) {
-			if (live.hasOnlyAir()) {
-				return EMPTY;
-			}
+		interface StateLookup {
+			BlockState at(int x, int y, int z);
+		}
 
+		static Section capture(LevelChunkSection live) {
+			return live.hasOnlyAir() ? EMPTY : capture(live::getBlockState);
+		}
+
+		static Section capture(StateLookup states) {
 			Reference2IntOpenHashMap<Block> ids = new Reference2IntOpenHashMap<>();
 			ids.defaultReturnValue(-1);
 			List<Block> palette = new ArrayList<>();
 			int[] raw = new int[4096];
 			for (int i = 0; i < 4096; i++) {
-				Block block = Purifier.purify(live.getBlockState(i & 15, i >> 8, (i >> 4) & 15));
+				Block block = Purifier.purify(states.at(i & 15, i >> 8, (i >> 4) & 15));
 				int id = ids.getInt(block);
 				if (id < 0) {
 					id = palette.size();
@@ -219,7 +239,7 @@ final class ChunkSnapshot {
 		static Section read(DataInputStream in) throws IOException {
 			Block[] palette = new Block[in.readUnsignedShort()];
 			for (int i = 0; i < palette.length; i++) {
-				Identifier id = Identifier.tryParse(in.readUTF());
+				ResourceLocation id = ResourceLocation.tryParse(in.readUTF());
 				Block block = id == null ? null : BuiltInRegistries.BLOCK.getOptional(id).orElse(null);
 				palette[i] = block == null ? Blocks.AIR : Purifier.purify(block);
 			}

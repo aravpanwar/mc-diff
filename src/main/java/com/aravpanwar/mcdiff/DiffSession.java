@@ -20,7 +20,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -60,7 +60,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 			String address = data == null ? "unknown" : data.ip;
 			root = minecraft.gameDirectory.toPath().resolve("mcdiff").resolve(purifyName(address));
 		}
-		Identifier dimension = level.dimension().identifier();
+		ResourceLocation dimension = level.dimension().location();
 		return root.resolve(purifyName(dimension.getNamespace() + "_" + dimension.getPath()));
 	}
 
@@ -70,7 +70,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 
 	void onChunkLoad(LevelChunk chunk) {
 		ChunkPos pos = chunk.getPos();
-		ChunkDiff existing = chunks.get(pos.pack());
+		ChunkDiff existing = chunks.get(pos.toLong());
 		if (existing != null) {
 			existing.chunk = chunk;
 			existing.markAllDirty();
@@ -99,20 +99,20 @@ final class DiffSession implements DiffMesh.KindLookup {
 			diff.markAllDirty();
 			background.add(diff);
 		}
-		chunks.put(pos.pack(), diff);
+		chunks.put(pos.toLong(), diff);
 		invalidateNeighbors(pos);
 	}
 
 	void onChunkUnload(LevelChunk chunk) {
 		ChunkPos pos = chunk.getPos();
-		ChunkDiff diff = chunks.get(pos.pack());
+		ChunkDiff diff = chunks.get(pos.toLong());
 		if (diff == null || diff.chunk != chunk) {
 			return;
 		}
 		if (diff.summaryDirty && diff.dirtySections.isEmpty()) {
 			summarize(diff);
 		}
-		chunks.remove(pos.pack());
+		chunks.remove(pos.toLong());
 		urgent.remove(diff);
 		background.remove(diff);
 		invalidateNeighbors(pos);
@@ -128,7 +128,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 		store.put(pos, encoded);
 		store.markOriginal(pos);
 
-		ChunkDiff old = chunks.get(pos.pack());
+		ChunkDiff old = chunks.get(pos.toLong());
 		if (old == null) {
 			store.putSummary(pos, summary);
 			return;
@@ -138,7 +138,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 		ChunkDiff fresh = new ChunkDiff(old.chunk, baseline);
 		fresh.markAllDirty();
 		fresh.summaryDirty = true;
-		chunks.put(pos.pack(), fresh);
+		chunks.put(pos.toLong(), fresh);
 		background.add(fresh);
 		invalidateNeighbors(pos);
 	}
@@ -171,7 +171,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 	}
 
 	void onBlockChanged(BlockPos pos) {
-		ChunkDiff diff = chunks.get(ChunkPos.pack(pos.getX() >> 4, pos.getZ() >> 4));
+		ChunkDiff diff = chunks.get(ChunkPos.asLong(pos.getX() >> 4, pos.getZ() >> 4));
 		if (diff == null) {
 			return;
 		}
@@ -243,14 +243,14 @@ final class DiffSession implements DiffMesh.KindLookup {
 	}
 
 	private void invalidateNeighbors(ChunkPos pos) {
-		markMeshDirty(pos.x() - 1, pos.z());
-		markMeshDirty(pos.x() + 1, pos.z());
-		markMeshDirty(pos.x(), pos.z() - 1);
-		markMeshDirty(pos.x(), pos.z() + 1);
+		markMeshDirty(pos.x - 1, pos.z);
+		markMeshDirty(pos.x + 1, pos.z);
+		markMeshDirty(pos.x, pos.z - 1);
+		markMeshDirty(pos.x, pos.z + 1);
 	}
 
 	private void markMeshDirty(int chunkX, int chunkZ) {
-		ChunkDiff diff = chunks.get(ChunkPos.pack(chunkX, chunkZ));
+		ChunkDiff diff = chunks.get(ChunkPos.asLong(chunkX, chunkZ));
 		if (diff != null && !diff.isEmpty()) {
 			diff.meshDirty = true;
 		}
@@ -258,7 +258,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 
 	@Override
 	public byte kindAt(int worldX, int y, int worldZ) {
-		ChunkDiff diff = chunks.get(ChunkPos.pack(worldX >> 4, worldZ >> 4));
+		ChunkDiff diff = chunks.get(ChunkPos.asLong(worldX >> 4, worldZ >> 4));
 		return diff == null ? ChunkDiff.NONE : diff.kindAt(worldX & 15, y, worldZ & 15);
 	}
 
@@ -289,7 +289,7 @@ final class DiffSession implements DiffMesh.KindLookup {
 	void flush() {
 		LongOpenHashSet active = new LongOpenHashSet();
 		for (ChunkDiff diff : chunks.values()) {
-			active.add(BaselineStore.regionKey(diff.pos.x(), diff.pos.z()));
+			active.add(BaselineStore.regionKey(diff.pos.x, diff.pos.z));
 		}
 		store.flush(active);
 	}

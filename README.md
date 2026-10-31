@@ -1,6 +1,6 @@
 # mc-diff
 
-A client-side Fabric mod for Minecraft 26.2 that shows what you've changed in your world.
+A client-side Fabric mod for Minecraft 1.21.1 that shows what you've changed in your world.
 
 ![A snowy base wiping from normal view to the mc-diff overlay to x-ray, by day and by night](docs/demo.gif)
 
@@ -23,7 +23,7 @@ X-ray shows changes through terrain, which is where all the old mining tunnels a
 
 ## Installing
 
-1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft 26.2.
+1. Install [Fabric Loader](https://fabricmc.net/use/) 0.16.14 or newer for Minecraft 1.21.1.
 2. Put [Fabric API](https://modrinth.com/mod/fabric-api) and the mc-diff jar in your `mods` folder.
 
 That's it. It only needs to be on your client, including when you play on servers.
@@ -71,25 +71,19 @@ cobblestone or obsidian where there used to be water or lava counts as the liqui
 placed.
 
 This only works properly if the world was generated on the Minecraft version you're playing now. Some noise is left,
-almost all of it underground: edges of lakes and sulfur pools, lava that flowed into water and turned into
+almost all of it underground: edges of lakes, lava that flowed into water and turned into
 cobblestone, and the odd tree trunk in dense forests. On the surface around your builds it's rare.
 
 ## Building
 
-Requires Java 25.
+Requires Java 21.
 
 ```
 ./gradlew build
 ```
 
 The jar lands in `build/libs/`. `./gradlew installToPrism` builds it and copies it into a Prism Launcher instance named
-`mc-diff`, replacing the previous build.
+`mc-diff-1.21.1`, replacing the previous build.
 
-`./gradlew runClientGameTest` starts the game and runs three tests:
-
-- a flat world where blocks are dug, built and replaced, checking the overlay, x-ray, stats and that the baseline
-  survives a reload
-- a normal world where changes are made, mc-diff's data is deleted, and `/mcdiff original` has to find the changes again
-- an untouched world rebuilt from its seed, where anything reported is noise
-
-Screenshots from the tests land in `build/run/clientGameTest/screenshots/`.
+This version has no automated game tests, because Fabric API for 1.21.1 doesn't include the client game test
+module. The 26.2 version does.

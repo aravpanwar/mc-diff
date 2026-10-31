@@ -24,7 +24,7 @@ abstract class LevelChunkMixin {
 	public abstract Level getLevel();
 
 	@Inject(method = "setBlockState", at = @At("RETURN"))
-	private void mcdiff$afterSetBlockState(BlockPos pos, BlockState state, int flags, CallbackInfoReturnable<BlockState> cir) {
+	private void mcdiff$afterSetBlockState(BlockPos pos, BlockState state, boolean moved, CallbackInfoReturnable<BlockState> cir) {
 		BlockState old = cir.getReturnValue();
 		if (old != null && getLevel() instanceof ClientLevel level) {
 			McDiffClient.onBlockChanged(level, pos, old, state);

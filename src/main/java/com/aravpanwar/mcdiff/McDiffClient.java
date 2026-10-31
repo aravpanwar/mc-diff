@@ -1,7 +1,7 @@
 package com.aravpanwar.mcdiff;
 
-import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument;
-import static net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.argument;
+import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -13,7 +13,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -22,7 +22,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.state.BlockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +39,6 @@ public final class McDiffClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		OriginalSweep.registerTicketType();
-
 		// Baselines are captured whether or not the overlay is showing, so nothing is missed while it's off.
 		ClientChunkEvents.CHUNK_LOAD.register((level, chunk) -> sessionFor(level).onChunkLoad(chunk));
 		ClientChunkEvents.CHUNK_UNLOAD.register((level, chunk) -> {
@@ -55,7 +53,7 @@ public final class McDiffClient implements ClientModInitializer {
 			BaselineStore.awaitWrites();
 		});
 
-		LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
 			if (overlay && session != null) {
 				DiffRenderer.render(context, session, xray, range);
 			}
@@ -169,7 +167,7 @@ public final class McDiffClient implements ClientModInitializer {
 
 	private static void status(Minecraft client, String text) {
 		if (client.player != null) {
-			client.player.sendOverlayMessage(Component.literal(text));
+			client.player.displayClientMessage(Component.literal(text), true);
 		}
 	}
 
@@ -254,7 +252,7 @@ public final class McDiffClient implements ClientModInitializer {
 	}
 
 	private static Component blockName(String id) {
-		Identifier parsed = Identifier.tryParse(id);
+		ResourceLocation parsed = ResourceLocation.tryParse(id);
 		return parsed == null
 				? Component.literal(id)
 				: BuiltInRegistries.BLOCK.getOptional(parsed).map(block -> (Component) block.getName()).orElse(Component.literal(id));
