@@ -52,7 +52,7 @@ fabricApi {
 }
 
 tasks.register('installToPrism', Copy) {
-	def mods = file("${System.getenv('APPDATA')}/PrismLauncher/instances/mc-diff/.minecraft/mods")
+	def mods = file("${System.getenv('APPDATA')}/PrismLauncher/instances/mc-diff-26.3/.minecraft/mods")
 	from jar.archiveFile
 	into mods
 	doFirst {

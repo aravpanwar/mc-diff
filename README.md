@@ -1,6 +1,6 @@
 # mc-diff
 
-A client-side Fabric mod for Minecraft 26.2 that shows what you've changed in your world.
+A client-side Fabric mod for Minecraft 26.3 that shows what you've changed in your world.
 
 **Download:** pick your Minecraft version on the [download page](https://www.aravpanwar.com/mc-diff/) or grab a jar from [releases](https://github.com/aravpanwar/mc-diff/releases).
 
@@ -25,7 +25,7 @@ X-ray shows changes through terrain, which is where all the old mining tunnels a
 
 ## Installing
 
-1. Install [Fabric Loader](https://fabricmc.net/use/) 0.19.5 or newer for Minecraft 26.2.
+1. Install [Fabric Loader](https://fabricmc.net/use/) 0.20.1 or newer for Minecraft 26.3.
 2. Put [Fabric API](https://modrinth.com/mod/fabric-api) and the mc-diff jar in your `mods` folder.
 
 That's it. It only needs to be on your client, including when you play on servers.
